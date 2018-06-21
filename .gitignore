@@ -1,0 +1,6 @@
+# ignore the crap vscode might leave around.
+.vscode
+# ignore the crap vim leaves around 
+*~
+*.swp
+*.swo
