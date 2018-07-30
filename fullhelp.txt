@@ -1,18 +1,29 @@
-Script takes arbitrary numbers of files containing your Free Energy Curves
-(FECs) and one filename to write to. The output file must be the first
-argument; the average/unified FEC must be the second. The leading bin edge is
-expected to be in the first column and the free energy of that bin is
-expected to be the second. None of the other columns, if there are any, are
-used explicitly.
+This script takes arbitrary numbers of files containing your Free Energy
+Curves (FECs) and a file prefix to write output files to. The output file
+must be the first argument; the average/unified FEC must be the second. The
+leading bin edge is expected to be in the first column and the free energy of
+that bin is expected to be the second. None of the other columns, if there
+are any, are used explicitly.
 
-This script computes a difference between neighboring points on an FEC, scaled by the
-distance between points (a numerical derivative), from a FEC between each
-replica and the FEC representing pooled/unified/average values. The distance between points (bin width) is assumed to be constant. It uses these
-deviations to calculate a standard error for each difference, writes that
-standard error to a file. Note it will have one fewer entry than the number
-of bins provided.
+This script computes a difference between neighboring points on an FEC,
+scaled by the distance between points (a numerical derivative), from a FEC
+between each replica and the FEC representing pooled/unified/average values.
+The distance between points (bin width) is assumed to be constant. It uses
+these deviations to calculate a standard deviation for each difference,
+writes that standard error to a file. Note it will have one fewer entry than
+the number of bins provided.
 
-It also calculates a collection of integrals over the windows used to produce the reaction coordinate. This winds up being analogous to locally`
+It also calculates a collection of integrals (using the trapezoid method)
+over the windows used to produce the reaction coordinate, then computes their
+standard deviation. This is an approximate way of associating variability to
+a particular window. Because the integrals are over segments of the
+derivative they are in free energy units. This script assumes your windows
+are evenly spaced along the reaction coordinate, computing where their
+'edges' are by subtracting the first bin from the last bin to determine the
+length of the reaction coordinate, then dividing by the window count. It also
+assumes that you've dropped half a window at each end of the reaction
+coordinate to avoid edge effects. Future schemes will allow user
+specification of 'bin edges' for this purpose.
 
 NOTE: ORDER IS IMPORTANT. THE OUTFILE IS OVERWRITTEN IN AN INDISCRIMINATE
 FASHION. DON'T PUT A FILE IN THE OUTFILE POSITION IF YOU WANT TO KEEP IT.

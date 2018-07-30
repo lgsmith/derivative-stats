@@ -4,29 +4,35 @@ import numpy as np
 from sys import argv
 
 helpstr = """
- Script takes arbitrary numbers of 
- files containing your Free Energy Curves (FECs)
- and one filename to write to.
- The output file must be the first argument;
- the average/unified FEC must be the second.
- Parsed to match output from WHAM as coded up
- by Alan Grossfield from U. of Rochester.
+This script takes arbitrary numbers of files containing your Free Energy
+Curves (FECs) a file prefix to write output files to and a window count (to
+obtain the number of windows). The output file must be the first argument;
+the average/unified FEC must be the second. The leading bin edge is expected
+to be in the first column and the free energy of that bin is expected to be
+the second. None of the other columns, if there are any, are used.
 
- Computes a difference between neighboring
- points on an FEC, scaled by the distance 
- between points (a numerical derivative),
- from a FEC between each replica and 
- the FEC representing pooled/unified/average
- values. Uses these deviations to calculate
- a standard error for each difference,
- writes that standard error to a file. Note
- it will have one fewer entry than the 
- number of bins provided. 
+This script computes a difference between neighboring points on an FEC,
+scaled by the distance between points (a numerical derivative), from a FEC
+between each replica and the FEC representing pooled/unified/average values.
+The distance between points (bin width) is assumed to be constant. It uses
+these deviations to calculate a standard deviation for each difference,
+writes that standard error to a file. Note it will have one fewer entry than
+the number of bins provided.
 
- NOTE: ORDER IS IMPORTANT. THE OUTFILE IS 
- OVERWRITTEN IN AN INDISCRIMINATE FASHION.
- DON'T PUT A FILE IN THE OUTFILE POSITION
- IF YOU WANT TO KEEP IT.
+It also calculates a collection of integrals (using the trapezoid method)
+over the windows used to produce the reaction coordinate, then computes their
+standard deviation. This is an approximate way of associating variability to
+a particular window. Because the integrals are over segments of the
+derivative they are in free energy units. This script assumes your windows
+are evenly spaced along the reaction coordinate, computing where their
+'edges' are by subtracting the first bin from the last bin to determine the
+length of the reaction coordinate, then dividing by the window count. It also
+assumes that you've dropped half a window at each end of the reaction
+coordinate to avoid edge effects. Future schemes will allow user
+specification of 'bin edges' for this purpose.
+
+NOTE: ORDER IS IMPORTANT. THE OUTFILE IS OVERWRITTEN IN AN INDISCRIMINATE
+FASHION. DON'T PUT A FILE IN THE OUTFILE POSITION IF YOU WANT TO KEEP IT.
 """
 
 # takes trajectory name (from cmd line) and a column, returns numpy array for that column
@@ -69,7 +75,7 @@ def puke(argvector, argcount):
 
 
 # usage string, part of help prompt.
-usage = 'usage:\nstdev-int-fecD.py outfile window_count average_fec replica_1_fec replica_2_fec ...'
+usage = 'usage:\nderivative-stats.py outfile_prefix window_count average_fec replica_1_fec replica_2_fec ...'
 
 
 argc = len(argv)
@@ -97,6 +103,7 @@ unified = np.genfromtxt(argv[3])
 # assuming bin distances are in first column:
 bin_width = unified[1][0] - unified[0][0]
 unified_inds = unified[:,0]
+# assumes half a window is dropped on each end of the reaction coordinate to eliminate edge effects
 window_width = (unified_inds[-1] - unified_inds[0]) / (window_count - 1)
 
 # make a numerical deriv array out of bin free E array
@@ -111,7 +118,12 @@ length_raw = len(unified)
 # compute the SAMPLE (ddof=1) standard deviation per bin of the free energy curve
 fecD_arr = np.array([fec_to_d(fec,1,bin_width) for fec in argv[4:]]) - unified_fec_d
 sample_count = len(fecD_arr)
-stdev = np.std(fecD_arr,axis=0,ddof=1)
+
+# loop over fecD_arr and accumulate un-normalized variance. normalize and get standard dev at end
+variance = np.zeros_like(unified_fec_d)
+for centered_fecD in fecD_arr:
+    variance += centered_fecD**2
+stdev = np.sqrt(variance/(sample_count-1))
 
 # Define index used for the FEC derivative variance
 # needed for plotting. End indices are removed, because
@@ -120,12 +132,19 @@ stdev = np.std(fecD_arr,axis=0,ddof=1)
 index = np.delete(unified_inds + np.repeat(bin_width/2.0, length_raw), length_raw - 1)
 
 # compute the integrals of the derivatives
-window_integrals = np.array([integrate_windows(np.delete(unified_inds, length_raw - 1), fecD, window_width, bin_width) for fecD in fecD_arr])
+x_edges = np.delete(unified_inds, length_raw - 1)
+window_integrals = np.array([integrate_windows(x_edges, fecD, window_width, bin_width) for fecD in fecD_arr])
+# 'center' window integrals on the unified best estimate
+window_integrals -= integrate_windows(x_edges, unified_fec_d, window_width, bin_width)
 
 integral_edges = np.around(window_integrals[0][:,0], decimals=0)
+print("Integral edges:")
 print(integral_edges)
 # compute the sample standard deviation of the integrals
-window_integral_SD = np.std(window_integrals, axis=0,ddof=1)
+integral_variance = np.zeros_like(window_integrals)
+for window_integral in window_integrals:
+    integral_variance += window_integral**2
+window_integral_SD = np.sqrt(integral_variance/(sample_count-1))
 
 # write the data to a file as ascii matrix for plotting
 np.savetxt(argv[1] + '.dat', np.column_stack((index,stdev)), delimiter='\t' )
