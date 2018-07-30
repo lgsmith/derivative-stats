@@ -5,7 +5,7 @@ from sys import argv
 
 helpstr = """
  Script takes arbitrary numbers of 
- files containing your FECs
+ files containing your Free Energy Curves (FECs)
  and one filename to write to.
  The output file must be the first argument;
  the average/unified FEC must be the second.
@@ -63,9 +63,8 @@ def integrate_windows(x_array, y_array, window_width, bin_width):
 
 # prints the contents of an iterable next to the index of the contents.
 # designed to diagnose errors in the case where script is inappropriately fed.
-def puke(argvector):
-    l = len(argvector)
-    for i in range(l):
+def puke(argvector, argcount):
+    for i in range(argc):
         print(i, argvector[i])
 
 
@@ -73,11 +72,11 @@ def puke(argvector):
 usage = 'usage:\nstdev-int-fecD.py outfile window_count average_fec replica_1_fec replica_2_fec ...'
 
 
-
+argc = len(argv)
 # do some IO scrutinizing
-if len(argv) < 2:
+if argc < 2:
     print(usage)
-    puke(argv)
+    puke(argv, argc)
     exit(-1)
 
 if 'help' in argv[1] or argv[1] == '-h':
@@ -85,9 +84,9 @@ if 'help' in argv[1] or argv[1] == '-h':
     print(usage)
     exit(0)
 
-if len(argv) < 5:
+if argc < 5:
     print(usage)
-    puke(argv)
+    puke(argv, argc)
     exit(-1)
 
 # IO stuff
