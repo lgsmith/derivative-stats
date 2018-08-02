@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import numpy as np
-from sys import argv
+#from sys import argv
 
 helpstr = """
 This script takes arbitrary numbers of files containing your Free Energy
@@ -52,13 +52,15 @@ def arr_num_deriv(fec_arr, bin_width):
 def fec_to_d(name, col, width):
     return arr_num_deriv(fec_to_arr(name, col), width)
 
-# takes an array of dependent variable values, an array of corresponding independent varable values and chunk count
+
+# takes a bins array, a bin values array, a bin width and a window width and chunk count
 # returns an array containing the integrals of the chunks of the xy pairs. (even sized chunks)
 def integrate_windows(x_array, y_array, window_width, bin_width):
     hwc = int(window_width/(2*bin_width))
     head_half_window = (x_array[0], np.trapz(y_array[0:hwc], x_array[0:hwc]))
     tail_half_window = (x_array[-hwc], np.trapz(y_array[-hwc:], x_array[-hwc:]))
-    x_chunks = np.array_split(x_array[hwc:-hwc], window_count-1) #split array into that many equal-sized chunks
+    # split array into that many equal-sized chunks
+    x_chunks = np.array_split(x_array[hwc:-hwc], window_count-1)
     y_chunks = np.array_split(y_array[hwc:-hwc], window_count-1)
     accum = [head_half_window]
     for i in range(window_count-1):
@@ -77,7 +79,8 @@ def puke(argvector, argcount):
 # usage string, part of help prompt.
 usage = 'usage:\nderivative-stats.py outfile_prefix window_count average_fec replica_1_fec replica_2_fec ...'
 
-
+argv = ['../derivative-stats.py','test','46', 'example-data/GUAAUA.all/GUAAUA.all.0.dat']
+argv += ['example-data/GUAAUA.'+str(i)+'/GUAAUA.ff12sb.e.pmf.0.ns.cut.dat' for i in range(1,5)]
 argc = len(argv)
 # do some IO scrutinizing
 if argc < 2:
@@ -135,17 +138,17 @@ index = np.delete(unified_inds + np.repeat(bin_width/2.0, length_raw), length_ra
 x_edges = np.delete(unified_inds, length_raw - 1)
 window_integrals = np.array([integrate_windows(x_edges, fecD, window_width, bin_width) for fecD in fecD_arr])
 # 'center' window integrals on the unified best estimate
-window_integrals -= integrate_windows(x_edges, unified_fec_d, window_width, bin_width)
+unified_integrals = integrate_windows(x_edges, unified_fec_d, window_width, bin_width)[:,1]
 
-integral_edges = np.around(window_integrals[0][:,0], decimals=0)
+integral_edges = np.around(window_integrals[0][:,0], decimals=1)
 print("Integral edges:")
 print(integral_edges)
 # compute the sample standard deviation of the integrals
-integral_variance = np.zeros_like(window_integrals)
+integral_variance = np.zeros_like(window_integrals[0][:,1])
 for window_integral in window_integrals:
-    integral_variance += window_integral**2
-window_integral_SD = np.sqrt(integral_variance/(sample_count-1))
+    integral_variance += window_integral[:,1]**2
+window_integral_SD = np.sqrt(integral_variance/(sample_count - 1))
 
 # write the data to a file as ascii matrix for plotting
 np.savetxt(argv[1] + '.dat', np.column_stack((index,stdev)), delimiter='\t' )
-np.savetxt(argv[1] + '_ints.dat', np.column_stack((integral_edges,window_integral_SD[:,1])), delimiter='\t')
+np.savetxt(argv[1] + '_ints.dat', np.column_stack((integral_edges, window_integral_SD)), delimiter='\t')
