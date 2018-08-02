@@ -1,4 +1,4 @@
-    set output 'GUAAUA-dslices-ints-all.pdf'
+    set output 'GUAAUA-dslices-ints-example.pdf'
     set term pdf enhanced font 'Palatino, 12'
     set encoding iso_8859_1
     set title 'GUAAUA F.E.C. derivative standard deviation sliced from end'

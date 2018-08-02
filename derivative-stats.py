@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import numpy as np
-#from sys import argv
+from sys import argv
 
 helpstr = """
 This script takes arbitrary numbers of files containing your Free Energy
@@ -79,8 +79,8 @@ def puke(argvector, argcount):
 # usage string, part of help prompt.
 usage = 'usage:\nderivative-stats.py outfile_prefix window_count average_fec replica_1_fec replica_2_fec ...'
 
-argv = ['../derivative-stats.py','test','46', 'example-data/GUAAUA.all/GUAAUA.all.0.dat']
-argv += ['example-data/GUAAUA.'+str(i)+'/GUAAUA.ff12sb.e.pmf.0.ns.cut.dat' for i in range(1,5)]
+#argv = ['../derivative-stats.py','test','46', 'example-data/GUAAUA.all/GUAAUA.all.0.dat']
+#argv += ['example-data/GUAAUA.'+str(i)+'/GUAAUA.ff12sb.e.pmf.0.ns.cut.dat' for i in range(1,5)]
 argc = len(argv)
 # do some IO scrutinizing
 if argc < 2:
@@ -117,14 +117,13 @@ unified_fec_d = arr_num_deriv(unified[:,1], bin_width)
 # (but I think that'd be a problem for many reasons)
 length_raw = len(unified)
 
-
 # compute the SAMPLE (ddof=1) standard deviation per bin of the free energy curve
-fecD_arr = np.array([fec_to_d(fec,1,bin_width) for fec in argv[4:]]) - unified_fec_d
+fecD_arr = np.array([fec_to_d(fec,1,bin_width) for fec in argv[4:]])
+centered_fecDs = fecD_arr - unified_fec_d
 sample_count = len(fecD_arr)
-
 # loop over fecD_arr and accumulate un-normalized variance. normalize and get standard dev at end
 variance = np.zeros_like(unified_fec_d)
-for centered_fecD in fecD_arr:
+for centered_fecD in centered_fecDs:
     variance += centered_fecD**2
 stdev = np.sqrt(variance/(sample_count-1))
 
@@ -141,8 +140,6 @@ window_integrals = np.array([integrate_windows(x_edges, fecD, window_width, bin_
 unified_integrals = integrate_windows(x_edges, unified_fec_d, window_width, bin_width)[:,1]
 
 integral_edges = np.around(window_integrals[0][:,0], decimals=1)
-print("Integral edges:")
-print(integral_edges)
 # compute the sample standard deviation of the integrals
 integral_variance = np.zeros_like(window_integrals[0][:,1])
 for window_integral in window_integrals:
@@ -151,4 +148,6 @@ window_integral_SD = np.sqrt(integral_variance/(sample_count - 1))
 
 # write the data to a file as ascii matrix for plotting
 np.savetxt(argv[1] + '.dat', np.column_stack((index,stdev)), delimiter='\t' )
+# np.savetxt(argv[1] + '_derivs.dat', fecD_arr, delimiter='\t')
+np.savetxt(argv[1] + '_derivs.dat', np.column_stack((index, fecD_arr.T)), delimiter='\t')
 np.savetxt(argv[1] + '_ints.dat', np.column_stack((integral_edges, window_integral_SD)), delimiter='\t')
