@@ -4,3 +4,5 @@
 *~
 *.swp
 *.swo
+# ignore the crap pycharm files
+.idea

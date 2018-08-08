@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import numpy as np
-from sys import argv
+# from sys import argv
 
 helpstr = """
  Script takes arbitrary numbers of 
@@ -73,6 +73,8 @@ def puke(argvector):
 usage = 'usage:\nstdev-int-fecD.py outfile window_count average_fec replica_1_fec replica_2_fec ...'
 
 
+argv = ['../derivative-stats.py','test','46', 'example-data/GUAAUA.all/GUAAUA.all.0.dat']
+argv += ['example-data/GUAAUA.'+str(i)+'/GUAAUA.ff12sb.e.pmf.0.ns.cut.dat' for i in range(1,5)]
 
 # do some IO scrutinizing
 if len(argv) < 2:
