@@ -1,32 +1,11 @@
 #!/usr/bin/env python3
 
 import numpy as np
+import argparse
 # from sys import argv
 
 helpstr = """
- Script takes arbitrary numbers of 
- files containing your FECs
- and one filename to write to.
- The output file must be the first argument;
- the average/unified FEC must be the second.
- Parsed to match output from WHAM as coded up
- by Alan Grossfield from U. of Rochester.
-
- Computes a difference between neighboring
- points on an FEC, scaled by the distance 
- between points (a numerical derivative),
- from a FEC between each replica and 
- the FEC representing pooled/unified/average
- values. Uses these deviations to calculate
- a standard error for each difference,
- writes that standard error to a file. Note
- it will have one fewer entry than the 
- number of bins provided. 
-
- NOTE: ORDER IS IMPORTANT. THE OUTFILE IS 
- OVERWRITTEN IN AN INDISCRIMINATE FASHION.
- DON'T PUT A FILE IN THE OUTFILE POSITION
- IF YOU WANT TO KEEP IT.
+AS YET UNFINISHED. 
 """
 
 # takes trajectory name (from cmd line) and a column, returns numpy array for that column
@@ -46,20 +25,6 @@ def arr_num_deriv(fec_arr, bin_width):
 def fec_to_d(name, col, width):
     return arr_num_deriv(fec_to_arr(name, col), width)
 
-# takes an array of dependent variable values, an array of corresponding independent varable values and chunk count
-# returns an array containing the integrals of the chunks of the xy pairs. (even sized chunks)
-def integrate_windows(x_array, y_array, window_width, bin_width):
-    hwc = int(window_width/(2*bin_width))
-    head_half_window = (x_array[0], np.trapz(y_array[0:hwc], x_array[0:hwc]))
-    tail_half_window = (x_array[-hwc], np.trapz(y_array[-hwc:], x_array[-hwc:]))
-    x_chunks = np.array_split(x_array[hwc:-hwc], window_count-1) #split array into that many equal-sized chunks
-    y_chunks = np.array_split(y_array[hwc:-hwc], window_count-1)
-    accum = [head_half_window]
-    for i in range(window_count-1):
-        accum.append((x_chunks[i][0], np.trapz(y_chunks[i], x_chunks[i])))
-    accum.append(tail_half_window)
-    return np.array(accum)
-
 
 # prints the contents of an iterable next to the index of the contents.
 # designed to diagnose errors in the case where script is inappropriately fed.
@@ -67,34 +32,32 @@ def puke(argvector):
     l = len(argvector)
     for i in range(l):
         print(i, argvector[i])
-
+# set up command line I/O
+parser = argparse.ArgumentParser(description=helpstr)
+parser.add_argument("fecs", nargs='+',
+                    help="The free energy curves across which to compute statistics.")
+parser.add_argument("--best-estimate","-b", default=None,
+                    help="The free energy curve to be used as the best estimate.\n\
+                    If none then the mean is taken.")
+parser.add_argument("--bin-edges","-e", default=None,
+                    help="A file containing the window edges for computing a window integral.\
+                    \nIf None, then no window integral is computed.")
+parser.add_argument("--cols","-c", type=tuple, default=(0,1),
+                    help="A tuple listing the columns in the free energy file.\
+                    \nLast element of the tuple should be the free energy column.\n\
+                    Preceeding columns indicated should contain the reaction coordinates.")
 
 # usage string, part of help prompt.
-usage = 'usage:\nstdev-int-fecD.py outfile window_count average_fec replica_1_fec replica_2_fec ...'
+usage = 'usage:\nderivative-stats.py outfile window_count average_fec replica_1_fec replica_2_fec ...'
 
 
 argv = ['../derivative-stats.py','test','46', 'example-data/GUAAUA.all/GUAAUA.all.0.dat']
 argv += ['example-data/GUAAUA.'+str(i)+'/GUAAUA.ff12sb.e.pmf.0.ns.cut.dat' for i in range(1,5)]
 
-# do some IO scrutinizing
-if len(argv) < 2:
-    print(usage)
-    puke(argv)
-    exit(-1)
 
-if 'help' in argv[1] or argv[1] == '-h':
-    print(helpstr)
-    print(usage)
-    exit(0)
+if window_edges:
 
-if len(argv) < 5:
-    print(usage)
-    puke(argv)
-    exit(-1)
 
-# IO stuff
-# read in the average or unified FEC to calculate deviations from
-window_count = int(argv[2])
 unified = np.genfromtxt(argv[3])
 
 # assuming bin distances are in first column:
