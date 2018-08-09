@@ -42,7 +42,7 @@ parser.add_argument("--best-estimate", "-b", default=None,
                     If none then the mean is taken.")
 parser.add_argument("--prefix","-p", type=str, default='dstats',
                     help="A prefix string used to name all output files.")
-parser.add_argument("--bin-edges", "-e", default=None,
+parser.add_argument("--integral-edges", "-e", default=None,
                     help="A file containing the window edges for computing a window integral.\n\
                     If None, then no window integral is computed.")
 parser.add_argument("--cols", "-c", type=tuple, default=(0, 1),
@@ -77,3 +77,7 @@ if args.derivs:
     for d in gradients:
         np.savetxt(args.prefix + d_infix + str(count) + file_extension, d)
         count += 1
+
+if args.integral_edges:
+    edges = numpy.genfromtxt(args.integral_edges)
+    # edges must be of the same dimensionality as rxn_coord
