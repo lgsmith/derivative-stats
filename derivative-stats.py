@@ -3,6 +3,7 @@ from typing import List
 
 import numpy as np
 import argparse
+import scipy.integrate as integrate
 
 # from sys import argv
 
@@ -21,6 +22,16 @@ def get_rxn_coord(fec, cols):
 def get_free_e(fec, col):
     return fec[:, col]  # reads in the file as 1d np array, data in col
 
+
+# take standard deviation of sets of arrays using 'best' as the mean
+# returns arrays of point-by variances.
+def stdev_from_best(arrays, best):
+    a_squared = np.zeros_like(best)
+    count = 0
+    for a in arrays:
+        a_squared += np.square(a)
+        count += 1
+    return np.sqrt(a_squared/count - np.square(best))
 
 # prints the contents of an iterable next to the index of the contents.
 # designed to diagnose errors in the case where script is inappropriately fed.
@@ -64,13 +75,19 @@ fecs = np.array([np.genfromtxt(fec) for fec in args.fecs])
 # slice through the first two layers of the array of arrays to obtain the free energy column vectors
 free_energies = fecs[:, :, args.cols[-1]]
 
+# define the discretized reaction coordinate as the domain of our free energy surfaces
 rxn_coord = get_rxn_coord(fecs[0], args.cols)
+# compute the gradient with respect to the reaction coordinate for each free energy curve
+gradients = np.array((np.gradient(freeE, rxn_coord) for freeE in free_energies))
 
 # load the best-estimate array into best
 if args.best_estimate:
     best = np.genfromtxt(args.best_estimate)[:, args.cols[-1]]
+    best_grad = np.gradient(best, rxn_coord)
+    fec_sd = stdev_from_best(gradients, best_grad)
+else:
+    fec_sd = np.std(gradients,axis=0)
 
-gradients = np.array((np.gradient(freeE, rxn_coord) for freeE in free_energies))
 
 if args.derivs:
     count = 0
@@ -78,6 +95,14 @@ if args.derivs:
         np.savetxt(args.prefix + d_infix + str(count) + file_extension, d)
         count += 1
 
+
+
 if args.integral_edges:
-    edges = numpy.genfromtxt(args.integral_edges)
+    edges = np.genfromtxt(args.integral_edges)
     # edges must be of the same dimensionality as rxn_coord
+    indexes = np.where(np.isin(edges, rxn_coord))
+    # use the edge indexes to split up rxn coord and fecs
+    rxn_coord_segs = np.split(rxn_coord, indexes)
+    gradient_segs = np.split(gradients, indexes, axis=0)
+    ints = integrate.simps
+
