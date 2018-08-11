@@ -13,7 +13,7 @@ AS YET UNFINISHED.
 # Takes a file name for a FEC, and the tuple of columns.
 # Returns the nd array of reaction coordinate positions.
 def get_rxn_coord(fec, cols):
-    return np.array([fec[:,i] for i in cols])
+    return np.array([fec[:, i] for i in cols[:-1]])
 
 
 # takes a FEC and  a column,
@@ -80,7 +80,6 @@ parser.add_argument("fecs", nargs='+',
 # for testing
 argv = '../derivative-stats.py -O -b example-data/GUAAUA.all/GUAAUA.all.0.dat -p test '.split()
 argv += ['example-data/GUAAUA.' + str(i) + '/GUAAUA.ff12sb.e.pmf.0.ns.cut.dat' for i in range(1, 5)]
-print(argv)
 args = parser.parse_args(argv[1:])
 
 # use the list of file names to create an array of arrays representing each fec.
@@ -96,6 +95,7 @@ gradients = np.array((np.gradient(freeE, rxn_coord) for freeE in free_energies))
 # load the best-estimate array into best
 if args.best_estimate:
     best = np.genfromtxt(args.best_estimate)[:, args.cols[-1]]
+    print(rxn_coord)
     best_grad = np.gradient(best, rxn_coord)
     fec_sd = stdev_from_best(gradients, best_grad)
 else:
