@@ -13,7 +13,13 @@ AS YET UNFINISHED.
 # Takes a file name for a FEC, and the tuple of columns.
 # Returns the nd array of reaction coordinate positions.
 def get_rxn_coord(fec, cols):
-    return np.array([fec[:, i] for i in cols[:-1]])
+    # prevents returning double-nested single column for 1D fecs.
+    rxn_coord_cols = cols[:-1]
+    if len(rxn_coord_cols) == 1:
+        retval = fec[:, rxn_coord_cols[0]]
+    else:
+        retval = np.array([fec[:, i] for i in rxn_coord_cols])
+    return retval
 
 
 # takes a FEC and  a column,
@@ -28,9 +34,9 @@ def stdev_from_best(arrays, best_est):
     a_squared = np.zeros_like(best_est)
     count = 0
     for a in arrays:
-        a_squared += np.square(a)
+        a_squared += np.square(a - best_est)
         count += 1
-    return np.sqrt(a_squared / count - np.square(best_est))
+    return np.sqrt(a_squared / count)
 
 
 # Takes a string file name, an array to use with savetxt, and the overwrite boolean
@@ -90,18 +96,17 @@ free_energies = fecs[:, :, args.cols[-1]]
 # define the discretized reaction coordinate as the domain of our free energy surfaces
 rxn_coord = get_rxn_coord(fecs[0], args.cols)
 # compute the gradient with respect to the reaction coordinate for each free energy curve
-gradients = np.array((np.gradient(freeE, rxn_coord) for freeE in free_energies))
+gradients = np.array([np.gradient(freeE, rxn_coord) for freeE in free_energies])
 
 # load the best-estimate array into best
 if args.best_estimate:
     best = np.genfromtxt(args.best_estimate)[:, args.cols[-1]]
-    print(rxn_coord)
     best_grad = np.gradient(best, rxn_coord)
     fec_sd = stdev_from_best(gradients, best_grad)
 else:
     fec_sd = np.std(gradients,axis=0)
 # merge the rxn coordinate array and the fec_sd array, then save them to file
-check_overwrite_save(args.prefix + fec_sd_infix + file_extension, np.vstack(rxn_coord,fec_sd), args.overwrite)
+check_overwrite_save(args.prefix + fec_sd_infix + file_extension, np.vstack((rxn_coord,fec_sd)), args.overwrite)
 
 if args.derivs:
     count = 0
@@ -124,5 +129,5 @@ if args.integral_edges:
         ints_sd = stdev_from_best(ints, best_ints)
     else:
         ints_sd = np.std(ints, axis=0)
-    check_overwrite_save(args.prefix + int_infix + file_extension, np.vstack(segmented_rxn_coord, ints_sd), args.overwrite)
+    check_overwrite_save(args.prefix + int_infix + file_extension, np.vstack((segmented_rxn_coord, ints_sd)), args.overwrite)
 

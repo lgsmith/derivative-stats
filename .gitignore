@@ -6,3 +6,5 @@
 *.swo
 # ignore the crap pycharm files
 .idea
+# ignore test output
+test/*
