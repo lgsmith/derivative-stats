@@ -39,6 +39,12 @@ def stdev_from_best(arrays, best_est):
     return np.sqrt(a_squared / count)
 
 
+# Takes a tuple of arrays, rearranges them so that each array will become a column
+# returns the nd array of columns.
+def v_to_col(tuple_of_arrays):
+    return np.vstack(tuple_of_arrays).T
+
+
 # Takes a string file name, an array to use with savetxt, and the overwrite boolean
 # saves the array to the file of name fname if the file is of size zero or
 # if there is no such file saves the array regardless of the status of
@@ -84,7 +90,7 @@ parser.add_argument("fecs", nargs='+',
                     help="The free energy curves across which to compute statistics.")
 
 # for testing
-argv = '../derivative-stats.py -O -b example-data/GUAAUA.all/GUAAUA.all.0.dat -p test '.split()
+argv = '../derivative-stats.py -O -b example-data/GUAAUA.all/GUAAUA.all.0.dat -p test/test -e test/edges.txt'.split()
 argv += ['example-data/GUAAUA.' + str(i) + '/GUAAUA.ff12sb.e.pmf.0.ns.cut.dat' for i in range(1, 5)]
 args = parser.parse_args(argv[1:])
 
@@ -104,21 +110,23 @@ if args.best_estimate:
     best_grad = np.gradient(best, rxn_coord)
     fec_sd = stdev_from_best(gradients, best_grad)
 else:
-    fec_sd = np.std(gradients,axis=0)
+    fec_sd = np.std(gradients, axis=0)
 # merge the rxn coordinate array and the fec_sd array, then save them to file
-check_overwrite_save(args.prefix + fec_sd_infix + file_extension, np.vstack((rxn_coord,fec_sd)), args.overwrite)
+check_overwrite_save(args.prefix + fec_sd_infix + file_extension,
+                     v_to_col((rxn_coord, fec_sd)), args.overwrite)
 
 if args.derivs:
     count = 0
     for d in gradients:
-        check_overwrite_save(args.prefix + d_infix + str(count) + file_extension, np.vstack(rxn_coord, d), args.overwrite)
+        check_overwrite_save(args.prefix + d_infix + str(count) + file_extension,
+                             v_to_col((rxn_coord, d)), args.overwrite)
         count += 1
 
 # if integral edges were provided, take integrals over the segments then compute variance.
 if args.integral_edges:
     edges = np.genfromtxt(args.integral_edges)
     # edges must be of the same dimensionality as rxn_coord
-    indexes = np.where(np.isin(edges, rxn_coord))
+    indexes = np.where(np.isin(rxn_coord, edges))
     # use the edge indexes to split up rxn coord and fecs
     segmented_rxn_coord = np.split(rxn_coord, indexes)
     segmented_grad = np.split(gradients, indexes, axis=0)
