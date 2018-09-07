@@ -130,7 +130,7 @@ parser.add_argument("fecs", nargs='+',
                     help="The free energy curves across which to compute statistics.")
 
 # for testing
-argv = '../derivative-stats.py -O -b example-data/GUAAUA.all/GUAAUA.all.0.dat -p test/test -e test/edges.txt'.split()
+argv = '../derivative-stats.py -O -b example-data/GUAAUA.all/GUAAUA.all.0.dat -p test/test -e example-data/edges.txt'.split()
 argv += ['example-data/GUAAUA.' + str(i) + '/GUAAUA.ff12sb.e.pmf.0.ns.cut.dat' for i in range(1, 5)]
 args = parser.parse_args(argv[1:])
 
@@ -166,11 +166,11 @@ if args.derivs:
 if args.integral_edges:
     edges = np.genfromtxt(args.integral_edges)
     # edges must be of the same dimensionality as rxn_coord
-    indexes = np.where(np.isin(rxn_coord, edges))
+    indexes, = np.where(np.isin(rxn_coord, edges))
     # use the edge indexes to split up rxn coord and fecs
     segmented_rxn_coord = np.split(rxn_coord, indexes)
-    segmented_grad = np.split(gradients, indexes, axis=0)
-    ints = np.array((integrate.simps(segg, segmented_rxn_coord)) for segg in segmented_grad)
+    segmented_grad = np.split(gradients, indexes, axis=1)
+    ints = np.array([integrate.simps(seg[0], seg[1]) for seg in zip(segmented_grad, segmented_rxn_coord)])
     if args.best_estimate:
         segmented_best = np.split(best_grad, indexes)
         best_ints = integrate.simps(segmented_best, segmented_rxn_coord)
