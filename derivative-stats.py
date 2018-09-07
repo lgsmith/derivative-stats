@@ -10,6 +10,7 @@ helpstr = """
 AS YET UNFINISHED. 
 """
 
+
 # Takes a file name for a FEC, and the tuple of columns.
 # Returns the nd array of reaction coordinate positions.
 def get_rxn_coord(fec, cols):
@@ -68,7 +69,7 @@ def check_overwrite_save(fname, data_tuple, overwrite_bool):
 # based on the expected input the last element in cols should be the index of the column with the freeE
 def stack_fec(fecfilen, cols):
     ncols = len(cols)
-    fec = np.genfromtxt(fecfilen)[:,cols]
+    fec = np.genfromtxt(fecfilen)[:, cols]
     free_e = fec[:, -1]  # shallow copy, last col is free E col
     unique_cols = []
     rxn_coord_len = []
@@ -90,19 +91,21 @@ def stack_fec(fecfilen, cols):
 
 # needed because np.grad doesn't allow you to pass an n-element list or array, where each element is ith rxn coordinate
 n_gradient_fxns = [lambda f, x: np.gradient(f, x),
-               lambda f, x: np.gradient(f, x[0], x[1]),
-               lambda f, x: np.gradient(f, x[0], x[1], x[2]),
-               lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3]),
-               lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4]),
-               lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5]),
-               lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5], x[6]),
-               lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7]),
-               lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8]),
-               lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9]),
-               lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10]),
-               lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10], x[11]),
-               lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10], x[11], x[12])
-               ]
+                   lambda f, x: np.gradient(f, x[0], x[1]),
+                   lambda f, x: np.gradient(f, x[0], x[1], x[2]),
+                   lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3]),
+                   lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4]),
+                   lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5]),
+                   lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5], x[6]),
+                   lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7]),
+                   lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8]),
+                   lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9]),
+                   lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10]),
+                   lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10],
+                                            x[11]),
+                   lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10], x[11],
+                                            x[12])
+                   ]
 
 d_infix = "-deriv-"
 int_infix = "-int"
@@ -116,7 +119,7 @@ parser.add_argument("-b", "--best-estimate", default=None,
                     If none then the mean is taken.")
 parser.add_argument("-p", "--prefix", type=str, default='dstats',
                     help="A prefix string used to name all output files.")
-parser.add_argument( "-e", "--integral-edges", default=None,
+parser.add_argument("-e", "--integral-edges", default=None,
                     help="A file containing the window edges for computing a window integral.\n\
                     If None, then no window integral is computed.")
 parser.add_argument("-c", "--cols", type=tuple, default=(0, 1),
@@ -125,7 +128,7 @@ parser.add_argument("-c", "--cols", type=tuple, default=(0, 1),
 parser.add_argument("-O", "--overwrite", action="store_true", default=False,
                     help="If thrown, will overwrite output files. Complains and exits otherwise.")
 parser.add_argument("-D", "--derivs", action="store_true", default=False,
-                    help="Save derivatives to file using"+d_infix+" infix.")
+                    help="Save derivatives to file using" + d_infix + " infix.")
 parser.add_argument("fecs", nargs='+',
                     help="The free energy curves across which to compute statistics.")
 
@@ -165,8 +168,10 @@ if args.derivs:
 # if integral edges were provided, take integrals over the segments then compute variance.
 if args.integral_edges:
     edges = np.genfromtxt(args.integral_edges)
+    # drop the first and last edge, so np.split doesn't make zero length arrays for those
+    no_boundary_edges = np.delete(edges.copy(), (0, len(edges) - 1))
     # edges must be of the same dimensionality as rxn_coord
-    indexes, = np.where(np.isin(rxn_coord, edges))
+    indexes, = np.where(np.isin(rxn_coord, no_boundary_edges))
     # use the edge indexes to split up rxn coord and fecs
     segmented_rxn_coord = np.split(rxn_coord, indexes)
     segmented_grad = np.split(gradients, indexes, axis=1)
@@ -174,8 +179,7 @@ if args.integral_edges:
     if args.best_estimate:
         segmented_best = np.split(best_grad, indexes)
         best_ints = np.array([integrate.simps(seg[0], seg[1]) for seg in zip(segmented_best, segmented_rxn_coord)])
-        ints_sd = stdev_from_best(ints, best_ints)
+        ints_sd = stdev_from_best(ints.T, best_ints)
     else:
         ints_sd = np.std(ints, axis=0)
-    check_overwrite_save(args.prefix + int_infix + file_extension, (segmented_rxn_coord, ints_sd), args.overwrite)
-
+    check_overwrite_save(args.prefix + int_infix + file_extension, (edges, ints_sd), args.overwrite)
