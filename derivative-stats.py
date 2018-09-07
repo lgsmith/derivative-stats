@@ -50,18 +50,42 @@ def v_to_col(tuple_of_arrays):
 # if there is no such file saves the array regardless of the status of
 # the file if overwrite is True.
 # Doesn't return anything.
-def check_overwrite_save(fname, array, overwrite_bool):
+def check_overwrite_save(fname, data_tuple, overwrite_bool):
     if overwrite_bool:
-        np.savetxt(fname, array)
+        np.savetxt(fname, v_to_col(data_tuple))
     else:
         try:
             if stat(fname).st_size == 0:
-                np.savetxt(fname, array)
+                np.savetxt(fname, v_to_col(data_tuple))
         except FileNotFoundError:
-            np.savetxt(fname, array)
+            np.savetxt(fname, v_to_col(data_tuple))
         else:
             print("You tried to overwrite a non-empty file but are not in overwrite mode.\n\
             Check your file naming scheme or throw the -O flag. Data not written for file:\n" + fname)
+
+
+# fecfilen is the name of the file containing the FEC. cols is the tuple of columns to use
+# based on the expected input the last element in cols should be the index of the column with the freeE
+def stack_fec(fecfilen, cols):
+    ncols = len(cols)
+    fec = np.genfromtxt(fecfilen)[:,cols]
+    free_e = fec[:, -1]  # shallow copy, last col is free E col
+    unique_cols = []
+    rxn_coord_len = []
+    for c in range(ncols - 1):  # all but last col, which is free E col
+        u, index = np.unique(fec[:, c], return_index=True)
+        unique_cols.append(u[np.argsort(index)])
+        rxn_coord_len.append(len(u))
+    stacked_fec = np.zeros_like(free_e).reshape(rxn_coord_len)
+    tracked_index = np.zeros(ncols - 1, dtype=int)
+    prevrow = fec[0].copy()  # Deep copy
+    for row in fec:
+        index = tuple(tracked_index)
+        stacked_fec[index] = row[-1]
+        ix_changed = np.argwhere(np.isin(row[:-1], prevrow[:-1]))
+        tracked_index[ix_changed] += 1
+        prevrow = row.copy()
+    return stacked_fec, tuple(unique_cols)  # tuple for indexing gradient
 
 
 # needed because np.grad doesn't allow you to pass an n-element list or array, where each element is ith rxn coordinate
@@ -129,13 +153,13 @@ else:
     fec_sd = np.std(gradients, axis=0)
 # merge the rxn coordinate array and the fec_sd array, then save them to file
 check_overwrite_save(args.prefix + fec_sd_infix + file_extension,
-                     v_to_col((rxn_coord, fec_sd)), args.overwrite)
+                     (rxn_coord, fec_sd), args.overwrite)
 
 if args.derivs:
     count = 0
     for d in gradients:
         check_overwrite_save(args.prefix + d_infix + str(count) + file_extension,
-                             v_to_col((rxn_coord, d)), args.overwrite)
+                             (rxn_coord, d), args.overwrite)
         count += 1
 
 # if integral edges were provided, take integrals over the segments then compute variance.
@@ -153,5 +177,5 @@ if args.integral_edges:
         ints_sd = stdev_from_best(ints, best_ints)
     else:
         ints_sd = np.std(ints, axis=0)
-    check_overwrite_save(args.prefix + int_infix + file_extension, np.vstack((segmented_rxn_coord, ints_sd)), args.overwrite)
+    check_overwrite_save(args.prefix + int_infix + file_extension, (segmented_rxn_coord, ints_sd), args.overwrite)
 
