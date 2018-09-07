@@ -64,6 +64,30 @@ def check_overwrite_save(fname, data_tuple, overwrite_bool):
             Check your file naming scheme or throw the -O flag. Data not written for file:\n" + fname)
 
 
+# fecfilen is the name of the file containing the FEC. cols is the tuple of columns to use
+# based on the expected input the last element in cols should be the index of the column with the freeE
+def stack_fec(fecfilen, cols):
+    ncols = len(cols)
+    fec = np.genfromtxt(fecfilen)[:,cols]
+    free_e = fec[:, -1]  # shallow copy, last col is free E col
+    unique_cols = []
+    rxn_coord_len = []
+    for c in range(ncols - 1):  # all but last col, which is free E col
+        u, index = np.unique(fec[:, c], return_index=True)
+        unique_cols.append(u[np.argsort(index)])
+        rxn_coord_len.append(len(u))
+    stacked_fec = np.zeros_like(free_e).reshape(rxn_coord_len)
+    tracked_index = np.zeros(ncols - 1, dtype=int)
+    prevrow = fec[0].copy()  # Deep copy
+    for row in fec:
+        index = tuple(tracked_index)
+        stacked_fec[index] = row[-1]
+        ix_changed = np.argwhere(np.isin(row[:-1], prevrow[:-1]))
+        tracked_index[ix_changed] += 1
+        prevrow = row.copy()
+    return stacked_fec, tuple(unique_cols)  # tuple for indexing gradient
+
+
 # needed because np.grad doesn't allow you to pass an n-element list or array, where each element is ith rxn coordinate
 n_gradient_fxns = [lambda f, x: np.gradient(f, x),
                lambda f, x: np.gradient(f, x[0], x[1]),
