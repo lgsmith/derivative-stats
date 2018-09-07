@@ -50,15 +50,15 @@ def v_to_col(tuple_of_arrays):
 # if there is no such file saves the array regardless of the status of
 # the file if overwrite is True.
 # Doesn't return anything.
-def check_overwrite_save(fname, array, overwrite_bool):
+def check_overwrite_save(fname, data_tuple, overwrite_bool):
     if overwrite_bool:
-        np.savetxt(fname, array)
+        np.savetxt(fname, v_to_col(data_tuple))
     else:
         try:
             if stat(fname).st_size == 0:
-                np.savetxt(fname, array)
+                np.savetxt(fname, v_to_col(data_tuple))
         except FileNotFoundError:
-            np.savetxt(fname, array)
+            np.savetxt(fname, v_to_col(data_tuple))
         else:
             print("You tried to overwrite a non-empty file but are not in overwrite mode.\n\
             Check your file naming scheme or throw the -O flag. Data not written for file:\n" + fname)
@@ -113,13 +113,13 @@ else:
     fec_sd = np.std(gradients, axis=0)
 # merge the rxn coordinate array and the fec_sd array, then save them to file
 check_overwrite_save(args.prefix + fec_sd_infix + file_extension,
-                     v_to_col((rxn_coord, fec_sd)), args.overwrite)
+                     (rxn_coord, fec_sd), args.overwrite)
 
 if args.derivs:
     count = 0
     for d in gradients:
         check_overwrite_save(args.prefix + d_infix + str(count) + file_extension,
-                             v_to_col((rxn_coord, d)), args.overwrite)
+                             (rxn_coord, d), args.overwrite)
         count += 1
 
 # if integral edges were provided, take integrals over the segments then compute variance.
@@ -137,5 +137,5 @@ if args.integral_edges:
         ints_sd = stdev_from_best(ints, best_ints)
     else:
         ints_sd = np.std(ints, axis=0)
-    check_overwrite_save(args.prefix + int_infix + file_extension, np.vstack((segmented_rxn_coord, ints_sd)), args.overwrite)
+    check_overwrite_save(args.prefix + int_infix + file_extension, (segmented_rxn_coord, ints_sd), args.overwrite)
 
