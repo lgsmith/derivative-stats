@@ -64,6 +64,22 @@ def check_overwrite_save(fname, data_tuple, overwrite_bool):
             Check your file naming scheme or throw the -O flag. Data not written for file:\n" + fname)
 
 
+# needed because np.grad doesn't allow you to pass an n-element list or array, where each element is ith rxn coordinate
+n_gradient_fxns = [lambda f, x: np.gradient(f, x),
+               lambda f, x: np.gradient(f, x[0], x[1]),
+               lambda f, x: np.gradient(f, x[0], x[1], x[2]),
+               lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3]),
+               lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4]),
+               lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5]),
+               lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5], x[6]),
+               lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7]),
+               lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8]),
+               lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9]),
+               lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10]),
+               lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10], x[11]),
+               lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10], x[11], x[12])
+               ]
+
 d_infix = "-deriv-"
 int_infix = "-int"
 fec_sd_infix = "-sd"
