@@ -129,7 +129,7 @@ parser.add_argument("-D", "--derivs", action="store_true", default=False,
 parser.add_argument("fecs", nargs='+',
                     help="The free energy curves across which to compute statistics.")
 
-# for testing
+# for debugging
 argv = '../derivative-stats.py -O -b example-data/GUAAUA.all/GUAAUA.all.0.dat -p test/test -e example-data/edges.txt'.split()
 argv += ['example-data/GUAAUA.' + str(i) + '/GUAAUA.ff12sb.e.pmf.0.ns.cut.dat' for i in range(1, 5)]
 args = parser.parse_args(argv[1:])
@@ -170,10 +170,10 @@ if args.integral_edges:
     # use the edge indexes to split up rxn coord and fecs
     segmented_rxn_coord = np.split(rxn_coord, indexes)
     segmented_grad = np.split(gradients, indexes, axis=1)
-    ints = np.array([integrate.simps(seg[0], seg[1]) for seg in zip(segmented_grad, segmented_rxn_coord)])
+    ints = np.array([integrate.simps(seg[0], seg[1], axis=1) for seg in zip(segmented_grad, segmented_rxn_coord)])
     if args.best_estimate:
         segmented_best = np.split(best_grad, indexes)
-        best_ints = integrate.simps(segmented_best, segmented_rxn_coord)
+        best_ints = np.array([integrate.simps(seg[0], seg[1]) for seg in zip(segmented_best, segmented_rxn_coord)])
         ints_sd = stdev_from_best(ints, best_ints)
     else:
         ints_sd = np.std(ints, axis=0)
