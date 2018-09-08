@@ -182,4 +182,4 @@ if args.integral_edges:
         ints_sd = stdev_from_best(ints.T, best_ints)
     else:
         ints_sd = np.std(ints, axis=0)
-    check_overwrite_save(args.prefix + int_infix + file_extension, (edges, ints_sd), args.overwrite)
+    check_overwrite_save(args.prefix + int_infix + file_extension, (np.delete(edges, -1), ints_sd), args.overwrite)
