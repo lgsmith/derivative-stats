@@ -4,6 +4,8 @@
 *~
 *.swp
 *.swo
-# ignore stuff pycharm generates
+
+# ignore the crap pycharm files
 .idea
-.idea/*
+# ignore test output
+test/*

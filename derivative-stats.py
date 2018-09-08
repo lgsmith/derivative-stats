@@ -1,153 +1,185 @@
 #!/usr/bin/env python3
+from typing import List
 
 import numpy as np
-from sys import argv
+import scipy.integrate as integrate
+import argparse
+from os import stat
 
 helpstr = """
-This script takes arbitrary numbers of files containing your Free Energy
-Curves (FECs) a file prefix to write output files to and a window count (to
-obtain the number of windows). The output file must be the first argument;
-the average/unified FEC must be the second. The leading bin edge is expected
-to be in the first column and the free energy of that bin is expected to be
-the second. None of the other columns, if there are any, are used.
-
-This script computes a difference between neighboring points on an FEC,
-scaled by the distance between points (a numerical derivative), from a FEC
-between each replica and the FEC representing pooled/unified/average values.
-The distance between points (bin width) is assumed to be constant. It uses
-these deviations to calculate a standard deviation for each difference,
-writes that standard error to a file. Note it will have one fewer entry than
-the number of bins provided.
-
-It also calculates a collection of integrals (using the trapezoid method)
-over the windows used to produce the reaction coordinate, then computes their
-standard deviation. This is an approximate way of associating variability to
-a particular window. Because the integrals are over segments of the
-derivative they are in free energy units. This script assumes your windows
-are evenly spaced along the reaction coordinate, computing where their
-'edges' are by subtracting the first bin from the last bin to determine the
-length of the reaction coordinate, then dividing by the window count. It also
-assumes that you've dropped half a window at each end of the reaction
-coordinate to avoid edge effects. Future schemes will allow user
-specification of 'bin edges' for this purpose.
-
-NOTE: ORDER IS IMPORTANT. THE OUTFILE IS OVERWRITTEN IN AN INDISCRIMINATE
-FASHION. DON'T PUT A FILE IN THE OUTFILE POSITION IF YOU WANT TO KEEP IT.
+AS YET UNFINISHED. 
 """
 
-# takes trajectory name (from cmd line) and a column, returns numpy array for that column
-def fec_to_arr(name, col):
-    column_vec = np.genfromtxt(name)[:,col] # reads in the file as 1d np array, data in col
-    return column_vec
 
-# takes a numpy array, returns a numpy array that contains
-# the differences between neighboring elts in the array
-def arr_num_deriv(fec_arr, bin_width):
-    # copy of input arr with first elt duplicated and last elt deleted.
-    trans_arr = np.delete(np.insert(fec_arr, 0, fec_arr[0]), len(fec_arr))
-    # return difference in array and shifted array, with the 0 element deleted (it is zero by construction)
-    return np.delete(fec_arr - trans_arr, 0)/bin_width
-
-# composition of the above two functions, takes a fec name and a column, returns array array of diferences
-def fec_to_d(name, col, width):
-    return arr_num_deriv(fec_to_arr(name, col), width)
+# Takes a file name for a FEC, and the tuple of columns.
+# Returns the nd array of reaction coordinate positions.
+def get_rxn_coord(fec, cols):
+    # prevents returning double-nested single column for 1D fecs.
+    rxn_coord_cols = cols[:-1]
+    if len(rxn_coord_cols) == 1:
+        retval = fec[:, rxn_coord_cols[0]]
+    else:
+        retval = np.array([fec[:, i] for i in rxn_coord_cols])
+    return retval
 
 
-# takes a bins array, a bin values array, a bin width and a window width and chunk count
-# returns an array containing the integrals of the chunks of the xy pairs. (even sized chunks)
-def integrate_windows(x_array, y_array, window_width, bin_width):
-    hwc = int(window_width/(2*bin_width))
-    head_half_window = (x_array[0], np.trapz(y_array[0:hwc], x_array[0:hwc]))
-    tail_half_window = (x_array[-hwc], np.trapz(y_array[-hwc:], x_array[-hwc:]))
-    # split array into that many equal-sized chunks
-    x_chunks = np.array_split(x_array[hwc:-hwc], window_count-1)
-    y_chunks = np.array_split(y_array[hwc:-hwc], window_count-1)
-    accum = [head_half_window]
-    for i in range(window_count-1):
-        accum.append((x_chunks[i][0], np.trapz(y_chunks[i], x_chunks[i])))
-    accum.append(tail_half_window)
-    return np.array(accum)
+# takes a FEC and  a column,
+# returns an array of that column, the free energy
+def get_free_e(fec, col):
+    return fec[:, col]  # reads in the file as 1d np array, data in col
 
 
-# prints the contents of an iterable next to the index of the contents.
-# designed to diagnose errors in the case where script is inappropriately fed.
-def puke(argvector, argcount):
-    for i in range(argc):
-        print(i, argvector[i])
+# take standard deviation of sets of arrays using 'best' as the mean
+# returns arrays of point-by variances.
+def stdev_from_best(arrays, best_est):
+    a_squared = np.zeros_like(best_est)
+    count = 0
+    for a in arrays:
+        a_squared += np.square(a - best_est)
+        count += 1
+    return np.sqrt(a_squared / count)
 
 
-# usage string, part of help prompt.
-usage = 'usage:\nderivative-stats.py outfile_prefix window_count average_fec replica_1_fec replica_2_fec ...'
+# Takes a tuple of arrays, rearranges them so that each array will become a column
+# returns the nd array of columns.
+def v_to_col(tuple_of_arrays):
+    return np.vstack(tuple_of_arrays).T
 
-#argv = ['../derivative-stats.py','test','46', 'example-data/GUAAUA.all/GUAAUA.all.0.dat']
-#argv += ['example-data/GUAAUA.'+str(i)+'/GUAAUA.ff12sb.e.pmf.0.ns.cut.dat' for i in range(1,5)]
-argc = len(argv)
-# do some IO scrutinizing
-if argc < 2:
-    print(usage)
-    puke(argv, argc)
-    exit(-1)
 
-if 'help' in argv[1] or argv[1] == '-h':
-    print(helpstr)
-    print(usage)
-    exit(0)
+# Takes a string file name, an array to use with savetxt, and the overwrite boolean
+# saves the array to the file of name fname if the file is of size zero or
+# if there is no such file saves the array regardless of the status of
+# the file if overwrite is True.
+# Doesn't return anything.
+def check_overwrite_save(fname, data_tuple, overwrite_bool):
+    if overwrite_bool:
+        np.savetxt(fname, v_to_col(data_tuple))
+    else:
+        try:
+            if stat(fname).st_size == 0:
+                np.savetxt(fname, v_to_col(data_tuple))
+        except FileNotFoundError:
+            np.savetxt(fname, v_to_col(data_tuple))
+        else:
+            print("You tried to overwrite a non-empty file but are not in overwrite mode.\n\
+            Check your file naming scheme or throw the -O flag. Data not written for file:\n" + fname)
 
-if argc < 5:
-    print(usage)
-    puke(argv, argc)
-    exit(-1)
 
-# IO stuff
-# read in the average or unified FEC to calculate deviations from
-window_count = int(argv[2])
-unified = np.genfromtxt(argv[3])
+# fecfilen is the name of the file containing the FEC. cols is the tuple of columns to use
+# based on the expected input the last element in cols should be the index of the column with the freeE
+def stack_fec(fecfilen, cols):
+    ncols = len(cols)
+    fec = np.genfromtxt(fecfilen)[:, cols]
+    free_e = fec[:, -1]  # shallow copy, last col is free E col
+    unique_cols = []
+    rxn_coord_len = []
+    for c in range(ncols - 1):  # all but last col, which is free E col
+        u, index = np.unique(fec[:, c], return_index=True)
+        unique_cols.append(u[np.argsort(index)])
+        rxn_coord_len.append(len(u))
+    stacked_fec = np.zeros_like(free_e).reshape(rxn_coord_len)
+    tracked_index = np.zeros(ncols - 1, dtype=int)
+    prevrow = fec[0].copy()  # Deep copy
+    for row in fec:
+        index = tuple(tracked_index)
+        stacked_fec[index] = row[-1]
+        ix_changed = np.argwhere(np.isin(row[:-1], prevrow[:-1]))
+        tracked_index[ix_changed] += 1
+        prevrow = row.copy()
+    return stacked_fec, tuple(unique_cols)  # tuple for indexing gradient
 
-# assuming bin distances are in first column:
-bin_width = unified[1][0] - unified[0][0]
-unified_inds = unified[:,0]
-# assumes half a window is dropped on each end of the reaction coordinate to eliminate edge effects
-window_width = (unified_inds[-1] - unified_inds[0]) / (window_count - 1)
 
-# make a numerical deriv array out of bin free E array
-unified_fec_d = arr_num_deriv(unified[:,1], bin_width)
+# needed because np.grad doesn't allow you to pass an n-element list or array, where each element is ith rxn coordinate
+n_gradient_fxns = [lambda f, x: np.gradient(f, x),
+                   lambda f, x: np.gradient(f, x[0], x[1]),
+                   lambda f, x: np.gradient(f, x[0], x[1], x[2]),
+                   lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3]),
+                   lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4]),
+                   lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5]),
+                   lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5], x[6]),
+                   lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7]),
+                   lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8]),
+                   lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9]),
+                   lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10]),
+                   lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10],
+                                            x[11]),
+                   lambda f, x: np.gradient(f, x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10], x[11],
+                                            x[12])
+                   ]
 
-# Bin distance from alan's wham code; will result in errors if indices
-# in merged file are not the same as those from other files
-# (but I think that'd be a problem for many reasons)
-length_raw = len(unified)
+d_infix = "-deriv-"
+int_infix = "-int"
+fec_sd_infix = "-sd"
+file_extension = ".asc"
 
-# compute the SAMPLE (ddof=1) standard deviation per bin of the free energy curve
-fecD_arr = np.array([fec_to_d(fec,1,bin_width) for fec in argv[4:]])
-centered_fecDs = fecD_arr - unified_fec_d
-sample_count = len(fecD_arr)
-# loop over fecD_arr and accumulate un-normalized variance. normalize and get standard dev at end
-variance = np.zeros_like(unified_fec_d)
-for centered_fecD in centered_fecDs:
-    variance += centered_fecD**2
-stdev = np.sqrt(variance/(sample_count-1))
+# set up command line I/O
+parser = argparse.ArgumentParser(description=helpstr)
+parser.add_argument("-b", "--best-estimate", default=None,
+                    help="The free energy curve to be used as the best estimate.\n\
+                    If none then the mean is taken.")
+parser.add_argument("-p", "--prefix", type=str, default='dstats',
+                    help="A prefix string used to name all output files.")
+parser.add_argument("-e", "--integral-edges", default=None,
+                    help="A file containing the window edges for computing a window integral.\n\
+                    If None, then no window integral is computed.")
+parser.add_argument("-c", "--cols", type=tuple, default=(0, 1),
+                    help="A tuple listing the columns to use in the free energy curve file.\n\
+                    Last element of the tuple should be the free energy column.")
+parser.add_argument("-O", "--overwrite", action="store_true", default=False,
+                    help="If thrown, will overwrite output files. Complains and exits otherwise.")
+parser.add_argument("-D", "--derivs", action="store_true", default=False,
+                    help="Save derivatives to file using" + d_infix + " infix.")
+parser.add_argument("fecs", nargs='+',
+                    help="The free energy curves across which to compute statistics.")
 
-# Define index used for the FEC derivative variance
-# needed for plotting. End indices are removed, because
-# no value is defined there, The indices are moved over
-# half a bin width to indicate the quantity is defined between bins.
-index = np.delete(unified_inds + np.repeat(bin_width/2.0, length_raw), length_raw - 1)
+# for debugging
+argv = '../derivative-stats.py -O -b example-data/GUAAUA.all/GUAAUA.all.0.dat -p test/test -e example-data/edges.txt'.split()
+argv += ['example-data/GUAAUA.' + str(i) + '/GUAAUA.ff12sb.e.pmf.0.ns.cut.dat' for i in range(1, 5)]
+args = parser.parse_args(argv[1:])
 
-# compute the integrals of the derivatives
-x_edges = np.delete(unified_inds, length_raw - 1)
-window_integrals = np.array([integrate_windows(x_edges, fecD, window_width, bin_width) for fecD in fecD_arr])
-# 'center' window integrals on the unified best estimate
-unified_integrals = integrate_windows(x_edges, unified_fec_d, window_width, bin_width)[:,1]
+# use the list of file names to create an array of arrays representing each fec.
+fecs = np.array([np.genfromtxt(fec) for fec in args.fecs])
+# slice through the first two layers of the array of arrays to obtain the free energy column vectors
+free_energies = fecs[:, :, args.cols[-1]]
 
-integral_edges = np.around(window_integrals[0][:,0], decimals=1)
-# compute the sample standard deviation of the integrals
-integral_variance = np.zeros_like(window_integrals[0][:,1])
-for window_integral in window_integrals:
-    integral_variance += window_integral[:,1]**2
-window_integral_SD = np.sqrt(integral_variance/(sample_count - 1))
+# define the discretized reaction coordinate as the domain of our free energy surfaces
+rxn_coord = get_rxn_coord(fecs[0], args.cols)
+# compute the gradient with respect to the reaction coordinate for each free energy curve
+gradients = np.array([np.gradient(freeE, rxn_coord) for freeE in free_energies])
 
-# write the data to a file as ascii matrix for plotting
-np.savetxt(argv[1] + '.dat', np.column_stack((index,stdev)), delimiter='\t' )
-# np.savetxt(argv[1] + '_derivs.dat', fecD_arr, delimiter='\t')
-np.savetxt(argv[1] + '_derivs.dat', np.column_stack((index, fecD_arr.T)), delimiter='\t')
-np.savetxt(argv[1] + '_ints.dat', np.column_stack((integral_edges, window_integral_SD)), delimiter='\t')
+# load the best-estimate array into best
+if args.best_estimate:
+    best = np.genfromtxt(args.best_estimate)[:, args.cols[-1]]
+    best_grad = np.gradient(best, rxn_coord)
+    fec_sd = stdev_from_best(gradients, best_grad)
+else:
+    fec_sd = np.std(gradients, axis=0)
+# merge the rxn coordinate array and the fec_sd array, then save them to file
+check_overwrite_save(args.prefix + fec_sd_infix + file_extension,
+                     (rxn_coord, fec_sd), args.overwrite)
+
+if args.derivs:
+    count = 0
+    for d in gradients:
+        check_overwrite_save(args.prefix + d_infix + str(count) + file_extension,
+                             (rxn_coord, d), args.overwrite)
+        count += 1
+
+# if integral edges were provided, take integrals over the segments then compute variance.
+if args.integral_edges:
+    edges = np.genfromtxt(args.integral_edges)
+    # drop the first and last edge, so np.split doesn't make zero length arrays for those
+    no_boundary_edges = np.delete(edges.copy(), (0, len(edges) - 1))
+    # edges must be of the same dimensionality as rxn_coord
+    indexes, = np.where(np.isin(rxn_coord, no_boundary_edges))
+    # use the edge indexes to split up rxn coord and fecs
+    segmented_rxn_coord = np.split(rxn_coord, indexes)
+    segmented_grad = np.split(gradients, indexes, axis=1)
+    ints = np.array([integrate.simps(seg[0], seg[1], axis=1) for seg in zip(segmented_grad, segmented_rxn_coord)])
+    if args.best_estimate:
+        segmented_best = np.split(best_grad, indexes)
+        best_ints = np.array([integrate.simps(seg[0], seg[1]) for seg in zip(segmented_best, segmented_rxn_coord)])
+        ints_sd = stdev_from_best(ints.T, best_ints)
+    else:
+        ints_sd = np.std(ints, axis=0)
+    check_overwrite_save(args.prefix + int_infix + file_extension, (np.delete(edges, -1), ints_sd), args.overwrite)
