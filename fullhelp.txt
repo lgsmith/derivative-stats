@@ -1,15 +1,18 @@
-This tool takes arbitrary numbers of files containing your Free Energy Curves (FECs) and computes their derivatives numerically. It then computes the standard deviation of the derivative at each point along the curve, writing those values to a specified output file. It will optionally alsonumerically re-integrate segments of the curve, then compute their standard deviation, to associate each segment with an accumulation of variance across that segment. The edges of these segments are user specified, though the customary use for them would be integrating over each window from which the curve is built to associate accumulations of variance to particular window positions along the reaction coordinate.
+This tool takes arbitrary numbers of files containing your Free Energy Curves (FECs) and computes their derivatives numerically. It then computes the standard deviation (SD) of the derivative at each point along the curve, writing those values to a specified output file. It will optionally also numerically re-integrate segments of the curve, then compute their SD, to associate each segment with an accumulation of variance across that segment. The edges of these segments are user specified, though the customary use for them would be integrating over each window from which the curve is built to associate accumulations of variance to particular window positions along the reaction coordinate.
 
 This tool computes the numerical derivative as implemented in the numpy gradient method, which is an order 2 accurate method for numerical differentiation that uses forward/backward methods for the boundary points so the gradient has the same number of elements as the input. It uses the scipy implementation of Simpson's method to integrate the curve segments, if they are provided by the user. 
 
-This tool can optionally compute the standard deviation from a best estimate that is not the mean of the data, and can also save the raw derivatives trace. If these behaviors are desired, inspect the flags section
+This tool can optionally compute the SD from a best estimate that is not the mean of the data, and can also save the raw derivatives trace. If these behaviors are desired, inspect the flags section of the help statement. Note that all flags other than the one producing this message have abbreviations.
 
-SAMPLE INPUTS.
+SAMPLE INPUTS
+
 The simplest possible command line might have nothing on it other than the free energy curves you'd like to compare:
 
 ./derivative-stats.py curve-1.dat curve-2.dat curve-3.dat
 
-If you run this command again you'll find you get an error; this is a safety built in to prevent your overwriting files you've created previously using this script in a blind fashion. To switch the safety off, throw the O fla:
+This will result in the creation of one file, dstats-sd.asc, which contains the per-bin standard deviaton of the derivative. It's in standard numpy savetxt format, meaning the elements in the first column are the reaction coordinate bins from your free energy curves, and the SD will be in the second column. The units will match whatever units the files in the curves were in, except the SD which will be a force matching the units of energy and extent provided.
+
+If you run this command again you'll find you get an error; this is a safety built in to prevent your overwriting files you've created previously using this tool in a blind fashion. To switch the safety off, throw the overwrite flag:
 
 ./derivative-stats.py --overwrite curve-1.dat curve-2.dat curve-3.dat
 
@@ -17,45 +20,30 @@ where the curve-i.dat files are placeholders for the files containing the FECs. 
 
 ./derivative-stats.py --prefix example curve-1.dat curve-2.dat curve-3.dat
 
-If you ran this command, you should get a file called example-sd.dat because dstats is the default prefix but you've supplied your own.
+If you ran this command, you should get a file called example-sd.dat instead of dstats-sd.dat because you've supplied your own prefix. Where prefix is used below here in output file names you can assume it is the prefix specified by this flag.
 
-This tool takes arbitrary numbers of files containing your Free Energy Curves
-(FECs) and computes their derivatives numerically. It then computes the
-standard deviation of the derivative at each point along the curve, writing
-those values to a specified output file. It will optionally alsonumerically
-re-integrate segments of the curve, then compute their standard deviation, to
-associate each segment with an accumulation of variance across that segment.
-The edges of these segments are user specified, though the customary use for
-them would be integrating over each window from which the curve is built to
-associate accumulations of variance to particular window positions along the
-reaction coordinate.
+This tool is designed with the output from Alan Grossfield's WHAM tool in mind. As such, it assumes your reaction coordinate bins will be in the zeroth column of the file, and the free energies for those coordinates will be in the first column. If you would like to modify this behavior, say because your reaction coordinate is in the (zeros based) third column and your free energy is in the second, use the cols flag:
 
-This tool computes the numerical derivative as implemented in the numpy
-gradient method, which is an order 2 accurate method for numerical
-differentiation that uses forward/backward methods for the boundary points so
-the gradient has the same number of elements as the input. It uses the scipy
-implementation of Simpson's method to integrate the curve segments, if they
-are provided by the user.
+./derivative-stats.py --cols 3 2 curve-1.dat curve-2.dat curve-3.dat
 
-This tool can optionally compute the standard deviation from a best estimate
-that is not the mean of the data, and can also save the raw derivatives
-trace. If these behaviors are desired, inspect the flags section
+You should always give cols two integer arguments. The first of these arguments will indicate the column index of the reaction coordinate, the second the free energy.
 
-SAMPLE INPUTS. The simplest possible command line might have nothing on it
-other than the free energy curves you'd like to compare:
 
-./derivative-stats.py curve-1.dat curve-2.dat curve-3.dat
+To integrate over curve segments corresponding to windows indicate where the 'edges' of each window are using the integral edges flag, providing a filename for the tool to read them from. Assuming your reaction coordinate is a number ranging from 1 to 10 and you have windows of approximate size 1:
 
-If you run this command again you'll find you get an error; this is a safety
-built in to prevent your overwriting files you've created previously using
-this script in a blind fashion. To switch the safety off, throw the O fla:
+$ cat edges.txt
+1 2 3 4 5 6 7 8 9 10
 
-./derivative-stats.py --overwrite curve-1.dat curve-2.dat curve-3.dat
+./derivative-stats.py --integral-edges edges.txt curve-1.dat curve-2.dat curve-3.dat
 
-where the curve-i.dat files are placeholders for the files containing the
-FECs. To change the prefix for this file, add the --prefix flag:
+This will produce a file titled 'prefix-ints.asc' which has the leading edge of each window next to the SD of the integrals over that window across the supplied curves. The units will again be identical to those the curve was provided in.
 
-./derivative-stats.py --prefix example curve-1.dat curve-2.dat curve-3.dat
+To save the derivatives from each curve to file throw the derivs flag:
 
-If you ran this command, you should get a file called example-sd.dat because
-dstats is the default prefix but you've supplied your own.
+./derivative-stats.py --derivs curve-1.dat curve-2.dat curve-3.dat
+
+This will produce three files (because you supplied three curves) called 'prefix-deriv-0.asc', 'prefix-deriv-1.asc', and 'prefix-deriv-2.asc'. The numbering is supplied by the program counting from the first curve to the last curve, in zeros based order. So 'prefix-deriv-0.asc' is the deriviative from curve-1.dat. The filename for the curve files has no bearing on the name of the derivative files, but the order does. If curve-3.dat were listed first on the command line, it would correspond to the file 'prefix-deriv-0.asc' instead.
+
+
+
+HARDWRAPPED VERSION BELOW HERE. USE THIS AS WYSIWYG input.

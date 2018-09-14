@@ -5,6 +5,8 @@ import argparse
 from os import stat
 import textwrap
 
+
+# note this will be reformatted by argparse's formatter class.
 description = """
 This tool takes files containing free energy curves and 
 computes the standard deviation of their derivatives.
