@@ -1,29 +1,61 @@
-This script takes arbitrary numbers of files containing your Free Energy
-Curves (FECs) and a file prefix to write output files to. The output file
-must be the first argument; the average/unified FEC must be the second. The
-leading bin edge is expected to be in the first column and the free energy of
-that bin is expected to be the second. None of the other columns, if there
-are any, are used explicitly.
+This tool takes arbitrary numbers of files containing your Free Energy Curves (FECs) and computes their derivatives numerically. It then computes the standard deviation of the derivative at each point along the curve, writing those values to a specified output file. It will optionally alsonumerically re-integrate segments of the curve, then compute their standard deviation, to associate each segment with an accumulation of variance across that segment. The edges of these segments are user specified, though the customary use for them would be integrating over each window from which the curve is built to associate accumulations of variance to particular window positions along the reaction coordinate.
 
-This script computes a difference between neighboring points on an FEC,
-scaled by the distance between points (a numerical derivative), from a FEC
-between each replica and the FEC representing pooled/unified/average values.
-The distance between points (bin width) is assumed to be constant. It uses
-these deviations to calculate a standard deviation for each difference,
-writes that standard error to a file. Note it will have one fewer entry than
-the number of bins provided.
+This tool computes the numerical derivative as implemented in the numpy gradient method, which is an order 2 accurate method for numerical differentiation that uses forward/backward methods for the boundary points so the gradient has the same number of elements as the input. It uses the scipy implementation of Simpson's method to integrate the curve segments, if they are provided by the user. 
 
-It also calculates a collection of integrals (using the trapezoid method)
-over the windows used to produce the reaction coordinate, then computes their
-standard deviation. This is an approximate way of associating variability to
-a particular window. Because the integrals are over segments of the
-derivative they are in free energy units. This script assumes your windows
-are evenly spaced along the reaction coordinate, computing where their
-'edges' are by subtracting the first bin from the last bin to determine the
-length of the reaction coordinate, then dividing by the window count. It also
-assumes that you've dropped half a window at each end of the reaction
-coordinate to avoid edge effects. Future schemes will allow user
-specification of 'bin edges' for this purpose.
+This tool can optionally compute the standard deviation from a best estimate that is not the mean of the data, and can also save the raw derivatives trace. If these behaviors are desired, inspect the flags section
 
-NOTE: ORDER IS IMPORTANT. THE OUTFILE IS OVERWRITTEN IN AN INDISCRIMINATE
-FASHION. DON'T PUT A FILE IN THE OUTFILE POSITION IF YOU WANT TO KEEP IT.
+SAMPLE INPUTS.
+The simplest possible command line might have nothing on it other than the free energy curves you'd like to compare:
+
+./derivative-stats.py curve-1.dat curve-2.dat curve-3.dat
+
+If you run this command again you'll find you get an error; this is a safety built in to prevent your overwriting files you've created previously using this script in a blind fashion. To switch the safety off, throw the O fla:
+
+./derivative-stats.py --overwrite curve-1.dat curve-2.dat curve-3.dat
+
+where the curve-i.dat files are placeholders for the files containing the FECs. To change the prefix for this file, add the --prefix flag:
+
+./derivative-stats.py --prefix example curve-1.dat curve-2.dat curve-3.dat
+
+If you ran this command, you should get a file called example-sd.dat because dstats is the default prefix but you've supplied your own.
+
+This tool takes arbitrary numbers of files containing your Free Energy Curves
+(FECs) and computes their derivatives numerically. It then computes the
+standard deviation of the derivative at each point along the curve, writing
+those values to a specified output file. It will optionally alsonumerically
+re-integrate segments of the curve, then compute their standard deviation, to
+associate each segment with an accumulation of variance across that segment.
+The edges of these segments are user specified, though the customary use for
+them would be integrating over each window from which the curve is built to
+associate accumulations of variance to particular window positions along the
+reaction coordinate.
+
+This tool computes the numerical derivative as implemented in the numpy
+gradient method, which is an order 2 accurate method for numerical
+differentiation that uses forward/backward methods for the boundary points so
+the gradient has the same number of elements as the input. It uses the scipy
+implementation of Simpson's method to integrate the curve segments, if they
+are provided by the user.
+
+This tool can optionally compute the standard deviation from a best estimate
+that is not the mean of the data, and can also save the raw derivatives
+trace. If these behaviors are desired, inspect the flags section
+
+SAMPLE INPUTS. The simplest possible command line might have nothing on it
+other than the free energy curves you'd like to compare:
+
+./derivative-stats.py curve-1.dat curve-2.dat curve-3.dat
+
+If you run this command again you'll find you get an error; this is a safety
+built in to prevent your overwriting files you've created previously using
+this script in a blind fashion. To switch the safety off, throw the O fla:
+
+./derivative-stats.py --overwrite curve-1.dat curve-2.dat curve-3.dat
+
+where the curve-i.dat files are placeholders for the files containing the
+FECs. To change the prefix for this file, add the --prefix flag:
+
+./derivative-stats.py --prefix example curve-1.dat curve-2.dat curve-3.dat
+
+If you ran this command, you should get a file called example-sd.dat because
+dstats is the default prefix but you've supplied your own.
