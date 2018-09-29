@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Slice data filename info (filename should indicate slicing)
+# Slice data filename info (filename indicates slicing)
 slicemin=0
 slicemax=600
 slicestep=100
@@ -18,3 +18,4 @@ echo 'plotting data...'
 # comment the following lines if you don't want this script to make plots
 python3 sd-plotter.py & # this generates a plot of the SD of the force
 python3 int-plotter.py & # this generates a plot of the SD of the window integral
+python3 deriv-plotter.py & # this generates a plot of the four replicas of the FEC derivative overlaid
