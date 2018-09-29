@@ -1,0 +1,13 @@
+This tool for assessing variance across replica free energy curves has come bundled with some example data and plotting scripts. These are just to give you an idea of how the code might work. The data is published in Smith, LG et al. JCTC, 2018, submitted. For a explanation of what the included dataset is, reference that article.
+
+To determine how to use the tool, know that a brief help message can be obtained by running the tool as a command line utility and throwing only the -h flag (i.e. './derivative-stats -h'). To get a more detailed message with model command line input use the --fullhelp flag ('./derivative-stats --fullhelp'). To see a minimum working example with plots, run the example-run.sh shell script from the example-data directory. To understand what is happening when this script runs, read on.
+
+For our purposes, the data in example data is a collection of Free Energy Curves (FEC)s generated using WHAM from umbrella sampling simulations which were used to mechanically denature or extend several small RNA hairpins. The simulations were done in replicate for each sequence, and one of the full sets of replicas for one sequence is included here. It is in the directory example data, and all the raw data is in the subdirectories marked GUAAUA.{number} the data in GUAAUA.all is pooled data created by pooling samples from each window for all four replicas, then running WHAM. From within each set of umbrella samples, we've included a FEC we created by truncating our trajectories after zero through six-hundred nanoseconds of sampling per window, in one-hundred nanosecond increments.
+
+We can look at the data for one dataset at one time, but because we have this series of truncations we can also look at how the data changes over time. The example-run.sh script does exactly this, plotting the SD in the integrals and derivatives for each truncation and then overlaying them in plots that permit you to see how sampling is decreasing (or increasing) variance in each region in the curve over time.
+
+In order to give you an idea of what the raw data for this analysis looks like, we also wrote a script to plot the derivatives we calculate. Because we're plotting each replica, we only plot the full length (zero nanoseconds excluded) dataset. 
+
+By cross-referencing the command line inputs from the example-data script with the output of the help flag you should be able to reproduce the type of analyses that were done in the Smith et al. publication mentioned above. 
+
+If you're having trouble understanding the tool or its application, you can drop the author a note at louis_smith@urmc.rochester.edu, or communicate through github at https://github.com/lgsmith.
