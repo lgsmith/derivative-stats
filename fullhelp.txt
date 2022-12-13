@@ -18,6 +18,8 @@ If you run this command again you'll find you get an error; this is a safety bui
 
 To use a 'best estimate' for the center of your data that is not the mean (for example, a free energy curve produced by pooling the raw data, then applying wham to that pool) for the purpose 
 
+./derivative-stats.py --best-estimate curve-mean.dat curve-1.dat curve-2.dat curve-3.dat 
+
 where the curve-i.dat files are placeholders for the files containing the FECs. To change the prefix for this file, add the prefix flag:
 
 ./derivative-stats.py --prefix example curve-1.dat curve-2.dat curve-3.dat
