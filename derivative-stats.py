@@ -73,6 +73,8 @@ the safety off, throw the overwrite flag:
 not the mean (for example, a free energy curve produced by pooling
 the raw data, then applying wham to that pool) for the purpose
 
+./derivative-stats.py --best-estimate curve-mean.dat curve-1.dat curve-2.dat curve-3.dat curve-i.dat 
+
 	where the curve-i.dat files are placeholders for the files
 containing the FECs. To change the prefix for this file, add the
 prefix flag:
